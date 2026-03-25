@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>CodeQuest</title>
+
+  <style>
+    body {
+      font-family: system-ui, Arial;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(8, 80px); /* 40 boxes layout */
+      gap: 8px;
+    }
+
+    .cell {
+      width: 80px;
+      height: 80px;
+      border: 1px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f9f9f9;
+      font-weight: bold;
+    }
+
+    .player {
+      background: linear-gradient(135deg, #ffd3a5, #ffb3b3);
+      border-radius: 8px;
+      padding: 6px 8px;
+    }
+
+    #controls {
+      max-width: 420px;
+    }
+
+    button {
+      padding: 8px 12px;
+      margin-top: 8px;
+      cursor: pointer;
+    }
+
+    #question {
+      margin-top: 12px;
+      font-weight: 600;
+    }
+
+    #log {
+      margin-top: 12px;
+      height: 120px;
+      overflow: auto;
+      border: 1px solid #eee;
+      padding: 8px;
+      background: #fff;
+    }
+
+    input {
+      margin-top: 6px;
+      padding: 6px;
+      width: 100%;
+    }
+
+    #stats {
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    #scoreboard {
+      margin-top: 10px;
+      padding-left: 18px;
+    }
+
+    #restartBtn {
+      display: none;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="board"></div>
+
+  <div id="controls">
+    <div class="player">Player 1</div>
+
+    <div id="stats">
+      Score: <span id="score">0</span><br>
+      Level: <span id="level">1</span>
+    </div>
+
+    <button id="rollBtn">Roll Dice</button>
+
+    <div id="question"></div>
+    <input id="answer" type="text" placeholder="Your answer">
+    <button id="submitBtn">Submit Answer</button>
+
+    <div id="log"></div>
+
+    <h3>Scoreboard</h3>
+    <ul id="scoreboard"></ul>
+    <button onclick="clearScores()">Clear Scoreboard</button>
+
+    <button id="restartBtn">Start Over</button>
+  </div>
+
+  <script>
+    const board = document.getElementById("board");
+    const rollBtn = document.getElementById("rollBtn");
+    const submitBtn = document.getElementById("submitBtn");
+    const questionDiv = document.getElementById("question");
+    const answerInput = document.getElementById("answer");
+    const log = document.getElementById("log");
+
+    const scoreDisplay = document.getElementById("score");
+    const levelDisplay = document.getElementById("level");
+    const scoreboard = document.getElementById("scoreboard");
+    const restartBtn = document.getElementById("restartBtn");
+
+    const boardSize = 40; // ✅ updated to 40
+    let playerPos = 0;
+    let correctAnswer = "";
+
+    let score = 0;
+    let level = 1;
+    let bonusUsed = false;
+
+    // 40 QUESTIONS
+    const questions = {
+      1: [
+        { q: "What does CPU stand for?", a: "central processing unit" },
+        { q: "Language for web structure?", a: "html" },
+        { q: "Language for styling?", a: "css" },
+        { q: "What stores permanent data?", a: "rom" },
+        { q: "Common system language?", a: "c" },
+        { q: "JS comment symbol?", a: "//" },
+        { q: "FIFO structure?", a: "queue" },
+        { q: "LIFO structure?", a: "stack" },
+        { q: "Binary uses which two numbers?", a: "0 and 1" },
+        { q: "What does RAM stand for?", a: "random access memory" },
+        { q: "What is a variable?", a: "a storage for data" },
+        { q: "What symbol is used for assignment?", a: "=" },
+        { q: "What is a loop?", a: "repeats code" },
+        { q: "What is an error in code called?", a: "bug" }
+      ],
+
+      2: [
+        { q: "What is an embedded system?", a: "a computer system with a dedicated function" },
+        { q: "What is firmware?", a: "software programmed into hardware" },
+        { q: "What does GPIO stand for?", a: "general purpose input output" },
+        { q: "What is real-time processing?", a: "immediate response to inputs" },
+        { q: "What is a microcontroller?", a: "a small computer on a chip" },
+        { q: "Python is what level language?", a: "high level" },
+        { q: "IDE stands for?", a: "integrated development environment" },
+        { q: "What is compiling?", a: "convert code into machine language" },
+        { q: "What is debugging?", a: "finding and fixing errors" },
+        { q: "What is a function?", a: "a reusable block of code" },
+        { q: "What is an algorithm?", a: "step by step solution" },
+        { q: "What is input?", a: "data given to a system" },
+        { q: "What is output?", a: "result from a system" }
+      ],
+
+      3: [
+        { q: "What is an array?", a: "a collection of elements" },
+        { q: "What is a linked list?", a: "nodes connected by pointers" },
+        { q: "What is a tree?", a: "hierarchical data structure" },
+        { q: "What is a graph?", a: "nodes connected by edges" },
+        { q: "What is sorting?", a: "arranging data in order" },
+        { q: "What is searching?", a: "finding data in a structure" },
+        { q: "Why is low power important?", a: "battery life" },
+        { q: "Language for interactivity?", a: "javascript" },
+        { q: "What is recursion?", a: "a function calling itself" },
+        { q: "What is Big-O notation used for?", a: "algorithm efficiency" },
+        { q: "What is a stack overflow?", a: "too many function calls" },
+        { q: "What is memory management?", a: "handling memory usage" },
+        { q: "What is data abstraction?", a: "hiding complex details" }
+      ]
+    };
+
+    const bonusQuestion = {
+      q: "What does API stand for?",
+      a: "application programming interface"
+    };
+
+    // Create board
+    for (let i = 0; i < boardSize; i++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.textContent = i;
+      board.appendChild(cell);
+    }
+
+    function renderPlayer() {
+      const cells = document.querySelectorAll(".cell");
+      cells.forEach((cell, index) => cell.textContent = index);
+      cells[playerPos].textContent = "🧍";
+    }
+
+    renderPlayer();
+
+    // Roll Dice
+    rollBtn.addEventListener("click", () => {
+      const roll = Math.floor(Math.random() * 6) + 1;
+      playerPos = Math.min(playerPos + roll, boardSize - 1);
+      renderPlayer();
+      log.innerHTML += `<div>Rolled a ${roll}</div>`;
+
+      if (playerPos === boardSize - 1) {
+        log.innerHTML += `<div style="color:blue">🎉 You reached the end!</div>`;
+        saveScore();
+        restartBtn.style.display = "block";
+        return;
+      }
+
+      generateQuestion();
+    });
+
+    function generateQuestion() {
+      if (!bonusUsed && Math.random() < 0.2) {
+        questionDiv.textContent = "💎 BONUS: " + bonusQuestion.q;
+        questionDiv.style.color = "gold";
+        correctAnswer = bonusQuestion.a + "|bonus";
+        bonusUsed = true;
+        return;
+      }
+
+      const levelQuestions = questions[level];
+      const randomIndex = Math.floor(Math.random() * levelQuestions.length);
+      const selected = levelQuestions[randomIndex];
+
+      questionDiv.textContent = selected.q;
+      questionDiv.style.color = "black";
+      correctAnswer = selected.a;
+    }
+
+    submitBtn.addEventListener("click", () => {
+      if (!correctAnswer) return;
+
+      const userAnswer = answerInput.value.trim().toLowerCase();
+
+      let isBonus = false;
+
+      if (correctAnswer.includes("|bonus")) {
+        correctAnswer = correctAnswer.replace("|bonus", "");
+        isBonus = true;
+      }
+
+      if (userAnswer === correctAnswer) {
+        if (isBonus) {
+          score += 200;
+          log.innerHTML += `<div style="color:gold">💎 BONUS Correct! (+200)</div>`;
+        } else {
+          score += 100;
+          log.innerHTML += `<div style="color:green">Correct! (+100)</div>`;
+        }
+      } else {
+        log.innerHTML += `<div style="color:red">Wrong! Answer was: ${correctAnswer}</div>`;
+      }
+
+      level = Math.min(Math.floor(score / 500) + 1, 3);
+
+      scoreDisplay.textContent = score;
+      levelDisplay.textContent = level;
+
+      answerInput.value = "";
+      questionDiv.textContent = "";
+      correctAnswer = "";
+    });
+
+    function saveScore() {
+      const li = document.createElement("li");
+      const time = new Date().toLocaleTimeString();
+      li.textContent = `Score: ${score} | Level: ${level} | Time: ${time}`;
+      scoreboard.appendChild(li);
+    }
+
+    function clearScores() {
+      scoreboard.innerHTML = "";
+    }
+
+    restartBtn.addEventListener("click", () => {
+      playerPos = 0;
+      score = 0;
+      level = 1;
+      correctAnswer = "";
+      bonusUsed = false;
+
+      scoreDisplay.textContent = score;
+      levelDisplay.textContent = level;
+
+      questionDiv.textContent = "";
+      answerInput.value = "";
+      log.innerHTML = "";
+
+      renderPlayer();
+      restartBtn.style.display = "none";
+    });
+
+    scoreDisplay.textContent = score;
+    levelDisplay.textContent = level;
+  </script>
+
+</body>
+</html>
