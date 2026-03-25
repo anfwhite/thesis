@@ -92,7 +92,6 @@
   <div id="controls">
     <div class="player">Player 1</div>
 
-    <!-- Score + Level -->
     <div id="stats">
       Score: <span id="score">0</span><br>
       Level: <span id="level">1</span>
@@ -106,12 +105,10 @@
 
     <div id="log"></div>
 
-    <!-- Scoreboard -->
     <h3>Scoreboard</h3>
     <ul id="scoreboard"></ul>
     <button onclick="clearScores()">Clear Scoreboard</button>
 
-    <!-- Restart Button -->
     <button id="restartBtn">Start Over</button>
   </div>
 
@@ -134,35 +131,47 @@
 
     let score = 0;
     let level = 1;
+    let bonusUsed = false;
 
-    const questions = [
-      { q: "What does CPU stand for?", a: "central processing unit" },
-      { q: "What is an embedded system?", a: "a computer system with a dedicated function" },
-      { q: "What is firmware?", a: "software programmed into hardware" },
-      { q: "What does GPIO stand for?", a: "general purpose input output" },
-      { q: "What is real-time processing?", a: "immediate response to inputs" },
-      { q: "What stores permanent data?", a: "rom" },
-      { q: "What is a microcontroller?", a: "a small computer on a chip" },
-      { q: "Why is low power important?", a: "battery life" },
+    // QUESTIONS BY LEVEL (24 total)
+    const questions = {
+      1: [
+        { q: "What does CPU stand for?", a: "central processing unit" },
+        { q: "Language for web structure?", a: "html" },
+        { q: "Language for styling?", a: "css" },
+        { q: "What stores permanent data?", a: "rom" },
+        { q: "Common system language?", a: "c" },
+        { q: "JS comment symbol?", a: "//" },
+        { q: "FIFO structure?", a: "queue" },
+        { q: "LIFO structure?", a: "stack" }
+      ],
+      2: [
+        { q: "What is an embedded system?", a: "a computer system with a dedicated function" },
+        { q: "What is firmware?", a: "software programmed into hardware" },
+        { q: "What does GPIO stand for?", a: "general purpose input output" },
+        { q: "What is real-time processing?", a: "immediate response to inputs" },
+        { q: "What is a microcontroller?", a: "a small computer on a chip" },
+        { q: "Python is what level language?", a: "high level" },
+        { q: "IDE stands for?", a: "integrated development environment" },
+        { q: "What is compiling?", a: "convert code into machine language" }
+      ],
+      3: [
+        { q: "What is an array?", a: "a collection of elements" },
+        { q: "What is a linked list?", a: "nodes connected by pointers" },
+        { q: "What is a tree?", a: "hierarchical data structure" },
+        { q: "What is a graph?", a: "nodes connected by edges" },
+        { q: "What is sorting?", a: "arranging data in order" },
+        { q: "What is searching?", a: "finding data in a structure" },
+        { q: "Why is low power important?", a: "battery life" },
+        { q: "Language for interactivity?", a: "javascript" }
+      ]
+    };
 
-      { q: "Language for web structure?", a: "html" },
-      { q: "Language for styling?", a: "css" },
-      { q: "Language for interactivity?", a: "javascript" },
-      { q: "Python is what level language?", a: "high level" },
-      { q: "IDE stands for?", a: "integrated development environment" },
-      { q: "Common system language?", a: "c" },
-      { q: "JS comment symbol?", a: "//" },
-      { q: "What is compiling?", a: "convert code into machine language" },
-
-      { q: "What is an array?", a: "a collection of elements" },
-      { q: "FIFO structure?", a: "queue" },
-      { q: "LIFO structure?", a: "stack" },
-      { q: "What is a linked list?", a: "nodes connected by pointers" },
-      { q: "What is a tree?", a: "hierarchical data structure" },
-      { q: "What is a graph?", a: "nodes connected by edges" },
-      { q: "What is sorting?", a: "arranging data in order" },
-      { q: "What is searching?", a: "finding data in a structure" }
-    ];
+    // ONE BONUS QUESTION
+    const bonusQuestion = {
+      q: "What does API stand for?",
+      a: "application programming interface"
+    };
 
     // Create board
     for (let i = 0; i < boardSize; i++) {
@@ -187,9 +196,8 @@
       renderPlayer();
       log.innerHTML += `<div>Rolled a ${roll}</div>`;
 
-      // Win condition
       if (playerPos === boardSize - 1) {
-        log.innerHTML += `<div style="color:blue">🎉 You reached the end!</div>`;
+        log.innerHTML += `<div style="color:blue"> You reached the end!</div>`;
         saveScore();
         restartBtn.style.display = "block";
         return;
@@ -198,20 +206,51 @@
       generateQuestion();
     });
 
+    // Generate Question
+    function generateQuestion() {
+      if (!bonusUsed && Math.random() < 0.2) {
+        questionDiv.textContent = " BONUS: " + bonusQuestion.q;
+        questionDiv.style.color = "gold";
+        correctAnswer = bonusQuestion.a + "|bonus";
+        bonusUsed = true;
+        return;
+      }
+
+      const levelQuestions = questions[level];
+      const randomIndex = Math.floor(Math.random() * levelQuestions.length);
+      const selected = levelQuestions[randomIndex];
+
+      questionDiv.textContent = selected.q;
+      questionDiv.style.color = "black";
+      correctAnswer = selected.a;
+    }
+
     // Submit Answer
     submitBtn.addEventListener("click", () => {
       if (!correctAnswer) return;
 
       const userAnswer = answerInput.value.trim().toLowerCase();
 
+      let isBonus = false;
+
+      if (correctAnswer.includes("|bonus")) {
+        correctAnswer = correctAnswer.replace("|bonus", "");
+        isBonus = true;
+      }
+
       if (userAnswer === correctAnswer) {
-        score += 100;
-        log.innerHTML += `<div style="color:green">Correct! (+100)</div>`;
+        if (isBonus) {
+          score += 200;
+          log.innerHTML += `<div style="color:gold"> BONUS Correct! (+200)</div>`;
+        } else {
+          score += 100;
+          log.innerHTML += `<div style="color:green">Correct! (+100)</div>`;
+        }
       } else {
         log.innerHTML += `<div style="color:red">Wrong! Answer was: ${correctAnswer}</div>`;
       }
 
-      level = Math.floor(score / 500) + 1;
+      level = Math.min(Math.floor(score / 500) + 1, 3);
 
       scoreDisplay.textContent = score;
       levelDisplay.textContent = level;
@@ -221,34 +260,23 @@
       correctAnswer = "";
     });
 
-    function generateQuestion() {
-      const randomIndex = Math.floor(Math.random() * questions.length);
-      const selected = questions[randomIndex];
-
-      questionDiv.textContent = selected.q;
-      correctAnswer = selected.a;
-    }
-
-    // Save Score
     function saveScore() {
       const li = document.createElement("li");
       const time = new Date().toLocaleTimeString();
-
       li.textContent = `Score: ${score} | Level: ${level} | Time: ${time}`;
       scoreboard.appendChild(li);
     }
 
-    // Clear Scoreboard
     function clearScores() {
       scoreboard.innerHTML = "";
     }
 
-    // Restart Game
     restartBtn.addEventListener("click", () => {
       playerPos = 0;
       score = 0;
       level = 1;
       correctAnswer = "";
+      bonusUsed = false;
 
       scoreDisplay.textContent = score;
       levelDisplay.textContent = level;
@@ -258,11 +286,9 @@
       log.innerHTML = "";
 
       renderPlayer();
-
       restartBtn.style.display = "none";
     });
 
-    // Initialize
     scoreDisplay.textContent = score;
     levelDisplay.textContent = level;
   </script>
